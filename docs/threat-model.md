@@ -1,15 +1,31 @@
-# Modelo de Amenazas - LessonForge AI
+# Modelo de amenazas — LessonForge AI
 
-## 1. Alcance y Metodología
-Análisis de amenazas basado en la metodología STRIDE para el MVP de LessonForge AI.
+**Versión 2.0.** Metodología: STRIDE sobre los flujos del MVP. Los controles se detallan en
+[security-requirements.md](security-requirements.md).
 
-## 2. Amenazas Identificadas y Mitigaciones
+## 1. Activos
 
-| Categoría STRIDE | Amenaza Concreta | Impacto | Mitigación en LessonForge AI |
-| :--- | :--- | :--- | :--- |
-| **Spoofing** (Suplantación) | Un estudiante intenta acceder con la identidad de un docente o de otro estudiante. | Crítico | Validación de tokens firmados y verificación de identidad y rol en cada endpoint mediante inyección de dependencias (`get_current_user`). |
-| **Tampering** (Manipulación) | Modificación de calificaciones o respuestas durante el envío. | Alto | Cálculo de calificación determinista exclusivamente en el backend (`grading_service.py`). Las respuestas no son alterables una vez enviadas. |
-| **Repudiation** (Repudio) | Un estudiante niega haber entregado un intento. | Medio | Registro de fecha y hora (`submitted_at`) inmutable en la base de datos junto al ID del estudiante. |
-| **Information Disclosure** (Fuga de Información) | **1.** Un estudiante inspecciona el payload JSON para ver las respuestas correctas antes de entregar.<br>**2.** Un docente consulta actividades de otro docente. | Crítico | **1.** Esquemas Pydantic diferenciados (`ActivityStudentView` omite campos de respuestas correctas).<br>**2.** Verificación de pertenencia a clase y propiedad de recursos en el backend. |
-| **Denial of Service** (Denegación de Servicio) | Carga masiva de PDFs gigantes o peticiones excesivas de generación por IA. | Alto | Validación de tamaño máximo de archivo PDF (e.g. 10MB), saneamiento previo de texto y límite de reintentos en trabajos asíncronos (`max_retries=3`). |
-| **Elevation of Privilege** (Elevación de Privilegios) | Un estudiante invoca el endpoint de creación de clases o generación de actividades. | Crítico | Dependencia `require_role('teacher')` que bloquea solicitudes no autorizadas con código HTTP 403 Forbidden. |
+- Respuestas correctas antes de entregar.
+- Notas y observaciones de cada alumno.
+- Observaciones privadas del tutor.
+- Material PDF de cada lección.
+- Secretos: clave JWT, credenciales de la base de datos, claves de la IA.
+- Cuota y coste del proveedor de IA.
+
+## 2. Límites de confianza
+
+1. Navegador ↔ API (Internet).
+2. API y worker ↔ proveedor de IA (salida no confiable).
+3. Contenido del PDF ↔ prompt (datos no confiables).
+4. Servicios de Cloud Run ↔ Secret Manager y base de datos.
+
+## 3. Amenazas y mitigaciones
+
+| STRIDE | Amenaza | Impacto | Mitigación |
+|---|---|---|---|
+| **S** Suplantación | Robo o falsificación de un JWT. Fuerza bruta en el inicio de sesión | Crítico | Firma HS256 con clave de Secret Manager, `alg` fijado, 30 min de vida, token en memoria (no `localStorage`), límite de peticiones en el inicio de sesión |
+| **T** Manipulación | El alumno altera su nota o reenvía respuestas. El LLM devuelve claves incoherentes | Alto | Nota calculada solo en el backend (ADR-006). `UNIQUE(activity_id, student_id)`. Salida del LLM validada |
+| **R** Repudio | El alumno niega haber entregado | Medio | `submitted_at` inmutable y log de auditoría con `request_id` |
+| **I** Divulgación | El alumno ve las claves antes de entregar. El alumno o el tutor ven datos ajenos. Fuga por RAG entre lecciones. Las observaciones del tutor llegan al alumno vía la IA | Crítico | Rutas y esquemas por rol, claves en una tabla aparte, 404 en recursos ajenos, filtro `lesson_id` obligatorio, observaciones excluidas del prompt de retroalimentación |
+| **D** Denegación de servicio | PDF bomb. Ráfagas de generación que agotan la cuota de la IA | Alto | Límites de tamaño y páginas, tiempos máximos, límites de tasa, cuota diaria de tokens, como máximo 3 intentos |
+| **E** Elevación de privilegios | Un alumno invoca endpoints de tutor. Una inyección de prompts intenta que el LLM actúe | Crítico | `require_role` en los routers `/tutor`. El LLM no tiene herramientas ni acceso a la base de datos y no decide la nota |

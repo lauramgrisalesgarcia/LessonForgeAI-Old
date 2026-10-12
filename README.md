@@ -1,9 +1,10 @@
 # LessonForge AI
 
-Aplicación web para docentes de idiomas: cargan material de clase en PDF y generan, mediante IA,
-actividades de refuerzo (opción múltiple y completar espacios). Los estudiantes las resuelven,
-reciben una **calificación determinista** (calculada en el backend, sin IA) y retroalimentación
-pedagógica generada por IA.
+API para tutorías de idiomas 1:1. Tras cada clase, el tutor registra la lección (PDF, palabras
+clave, observaciones) y genera con IA material de refuerzo (cuestionario o completar frases)
+usando **RAG** sobre ese material. El alumno lo resuelve y recibe una **nota determinista**
+(calculada en el backend, sin IA) y observaciones de la IA; el tutor consulta los resultados.
+El foco es el backend; el frontend es una demo mínima. Ver [requisitos](docs/requirements.md).
 
 Proyecto final de maestría — entrega: 26 de octubre de 2026. Solo usa datos ficticios.
 
@@ -13,8 +14,8 @@ Proyecto final de maestría — entrega: 26 de octubre de 2026. Solo usa datos f
 |---|---|
 | Frontend | React 18, Vite, TypeScript estricto, Vitest + Testing Library |
 | Backend | Python 3.12, FastAPI, SQLAlchemy async, Alembic, pytest + HTTPX |
-| Datos | PostgreSQL 16 |
-| Infra | Docker Compose, GitHub Actions |
+| Datos | PostgreSQL 16 + pgvector |
+| Infra | Docker Compose, GitHub Actions, Cloud Run + Secret Manager |
 
 ## Estructura
 
@@ -65,4 +66,4 @@ construcción de las imágenes Docker.
 - [Requisitos](docs/requirements.md) · [Arquitectura](docs/architecture.md) · [Modelo de datos](docs/data-model.md)
 - [Requisitos de seguridad](docs/security-requirements.md) · [Modelo de amenazas](docs/threat-model.md) · [Seguridad RAG](docs/rag-security.md)
 - [Estrategia de pruebas](docs/testing-strategy.md) · [Evaluación de IA](docs/ai-evaluation.md)
-- ADR: [001 Autenticación](docs/adr/ADR-001-auth-and-session.md) · [002 Trabajos asíncronos](docs/adr/ADR-002-async-job-queue.md) · [003 Almacenamiento PDF](docs/adr/ADR-003-pdf-storage-strategy.md)
+- ADR: [001 Autenticación](docs/adr/ADR-001-auth-and-session.md) · [002 Trabajos asíncronos](docs/adr/ADR-002-async-job-queue.md) · [003 Almacenamiento PDF](docs/adr/ADR-003-pdf-storage-strategy.md) · [004 RAG con pgvector](docs/adr/ADR-004-rag-pgvector.md) · [005 Secretos y despliegue](docs/adr/ADR-005-secrets-and-deployment.md) · [006 Calificación determinista](docs/adr/ADR-006-deterministic-grading.md)

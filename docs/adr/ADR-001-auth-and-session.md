@@ -1,29 +1,36 @@
-# ADR-001: Estrategia de Autenticación y Manejo de Sesión
+# ADR-001: Estrategia de autenticación y manejo de sesión
 
 ## Estado
-Propuesto
+Aceptado (11 de octubre de 2026)
 
-## Contexto y Problema
-LessonForge AI requiere autenticación real y autorización basada en roles (docente y estudiante) validada estrictamente en el backend. Los datos y usuarios serán ficticios (datos de demostración), pero los mecanismos de control de acceso, verificación de tokens o sesiones y protección contra accesos indebidos deben ser completamente funcionales.
+## Contexto
+LessonForge AI necesita autenticación real y autorización por rol (tutor o alumno), verificadas en
+el backend. Los usuarios son ficticios, pero los mecanismos deben ser completamente funcionales.
+El cliente es una SPA de demostración y el foco del proyecto es la API.
 
-Se debe elegir una estrategia para el transporte y validación de la identidad entre la SPA (React + TypeScript) y el backend (FastAPI).
+## Alternativas consideradas
+1. **JWT Bearer** en `Authorization`. Sin estado, integrado con OpenAPI y Swagger
+   (`OAuth2PasswordBearer`), fácil de usar en pruebas con HTTPX. Revocar un token antes de que
+   caduque es difícil.
+2. **Cookie de sesión `HttpOnly`** con sesiones en PostgreSQL. Inmune a la lectura desde
+   JavaScript y revocable al instante. Exige protección CSRF y una consulta a la base de datos por
+   petición.
+3. **Token de acceso en memoria y *refresh token* en cookie `HttpOnly`.** Es la opción más
+   robusta, pero también la más compleja para el plazo.
 
-## Alternativas Consideradas
+## Decisión
+**Alternativa 1**, con estas condiciones:
+- **PyJWT** con `HS256`. La lista de algoritmos se fija al verificar, así que `alg=none` se
+  rechaza. Se incluyen las *claims* `sub`, `role`, `exp`, `iat` y `jti`.
+- Expiración de **30 min** y sin *refresh token*: al caducar, el usuario vuelve a iniciar sesión.
+- `SECRET_KEY` de al menos 32 bytes, obtenida de Secret Manager en producción (ADR-005).
+- Contraseñas con **Argon2** mediante `pwdlib`. Se descartan `python-jose` y `passlib` porque
+  están sin mantenimiento.
+- El frontend guarda el token **solo en memoria**, no en `localStorage`.
+- `get_current_user` comprueba en cada petición que el usuario sigue activo y que su rol coincide
+  con el del token.
 
-### Alternativa 1: JWT (JSON Web Tokens) en cabecera `Authorization: Bearer <token>`
-- **Ventajas**: Stateless (fácil escalabilidad horizontal sin consultar DB en cada verificación básica), estándar ampliamente adoptado, soporte nativo de FastAPI con OpenAPI (`OAuth2PasswordBearer`).
-- **Desventajas y Riesgos**: Si se almacena en `localStorage` en la SPA, es vulnerable a robo mediante ataques XSS (Cross-Site Scripting). La revocación inmediata de un token activo requiere mantener una lista de revocación (blacklist) o TTLs muy cortos.
-- **Mitigación**: Expiración corta (e.g. 15-30 minutos).
-
-### Alternativa 2: Cookies de sesión `HttpOnly`, `Secure` y `SameSite=Lax` con almacenamiento en PostgreSQL
-- **Ventajas**: Inmune a lectura directa desde JavaScript (mitigación total de exfiltración vía XSS), revocación instantánea eliminando el registro de sesión en la base de datos.
-- **Desventajas y Riesgos**: Requiere protección estricta contra CSRF (Cross-Site Request Forgery) si se maneja con cookies sin SameSite estricto, overhead de consulta a DB por cada petición protegida.
-- **Mitigación**: Uso de cabeceras personalizadas de API y atributos de cookie modernos.
-
-### Alternativa 3: Tokens de acceso en memoria con Cookie HttpOnly para refresh
-- **Ventajas**: Combina la protección contra XSS en reposo con la verificación rápida de tokens.
-- **Desventajas**: Mayor complejidad de implementación y sincronización en la SPA para el MVP de maestría.
-
-## Decisión Propuesta y Justificación
-Para el MVP de LessonForge AI se propone **Tokens de acceso Bearer (JWT) gestionados mediante esquema OAuth2 de FastAPI con expiración corta**, complementados con validación estricta de permisos en backend mediante dependencias tipadas de FastAPI (`get_current_user`, `require_role`).
-- Justificación: Proporciona integración natural de autenticación interactiva en Swagger UI (`/docs`), simplicidad de consumo en pruebas con HTTPX y una arquitectura limpia sin requerir almacenamiento complejo de sesiones distribuidas para el plazo del 26 de octubre de 2026.
+## Consecuencias
+- Simplicidad y buena integración con Swagger y las pruebas.
+- Un token robado sirve hasta que caduca (como mucho 30 min). Se acepta para el MVP; la mejora
+  natural sería la alternativa 3.
