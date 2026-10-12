@@ -1,45 +1,59 @@
+# Entorno de desarrollo local. Ejecutar desde la raíz del repositorio:
+#   docker compose -f infra/docker-compose.yml up --build
+# Las rutas son relativas a este directorio (infra/). Credenciales ficticias de desarrollo.
+
 services:
   db:
     image: postgres:16-alpine
     container_name: lessonforge_db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: lessonforge_user
-      POSTGRES_PASSWORD: lessonforge_dummy_password
-      POSTGRES_DB: lessonforge_db
+      POSTGRES_USER: ${POSTGRES_USER:-lessonforge_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lessonforge_dummy_password}
+      POSTGRES_DB: ${POSTGRES_DB:-lessonforge_db}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   backend:
     build:
-      context: ./backend
+      context: ../backend
       dockerfile: ../infra/Dockerfile.backend
     container_name: lessonforge_backend
     restart: unless-stopped
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     environment:
-      DATABASE_URL: postgresql+asyncpg://lessonforge_user:lessonforge_dummy_password@db:5432/lessonforge_db
-      SECRET_KEY: dummy-insecure-secret-key-for-development-only-change-in-prod
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-lessonforge_user}:${POSTGRES_PASSWORD:-lessonforge_dummy_password}@db:5432/${POSTGRES_DB:-lessonforge_db}
       DOCS_ENABLED: "true"
+      UPLOAD_DIR: /app/uploads
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
-      - ./backend:/app
+      - ../backend:/app
       - uploads_data:/app/uploads
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   frontend:
     build:
-      context: ./frontend
+      context: ../frontend
       dockerfile: ../infra/Dockerfile.frontend
     container_name: lessonforge_frontend
     restart: unless-stopped
+    environment:
+      VITE_API_BASE_URL: http://127.0.0.1:8000/api/v1
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:5173"
     volumes:
-      - ./frontend:/app
+      - ../frontend:/app
       - /app/node_modules
     depends_on:
       - backend

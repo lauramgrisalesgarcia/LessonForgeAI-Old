@@ -1,6 +1,8 @@
 import pytest
 from httpx import AsyncClient
 
+from app.core.config import get_settings
+
 
 @pytest.mark.asyncio
 async def test_root_endpoint(async_client: AsyncClient):
@@ -19,7 +21,7 @@ async def test_health_check_endpoint(async_client: AsyncClient):
     data = response.json()
     assert data["status"] == "ok"
     assert data["app_name"] == "LessonForge AI"
-    assert data["environment"] == "development"
+    assert data["environment"] == get_settings().ENVIRONMENT
 
 
 @pytest.mark.asyncio

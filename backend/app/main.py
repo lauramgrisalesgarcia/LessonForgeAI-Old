@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.api.v1.router import router as api_v1_router
 from app.core.config import get_settings
 
@@ -15,7 +16,9 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.PROJECT_NAME,
         version="0.1.0",
-        description="API del monolito modular LessonForge AI para generación de actividades de idiomas",
+        description=(
+            "API del monolito modular LessonForge AI para generación de actividades de idiomas"
+        ),
         docs_url=docs_url,
         redoc_url=redoc_url,
         openapi_url=openapi_url,

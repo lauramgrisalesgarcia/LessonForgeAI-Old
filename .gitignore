@@ -14,8 +14,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# Anclados a la raíz para no ignorar carpetas como frontend/src/lib/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -227,3 +228,6 @@ frontend/build/
 *.local
 .env.*
 !.env.example
+
+# Archivos subidos por usuarios (PDF) en desarrollo local
+uploads/

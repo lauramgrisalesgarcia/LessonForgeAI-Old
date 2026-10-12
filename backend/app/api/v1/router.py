@@ -1,13 +1,15 @@
-from fastapi import APIRouter
-from app.core.config import get_settings
+from typing import Annotated
+
+from fastapi import APIRouter, Depends
+
+from app.core.config import Settings, get_settings
 from app.schemas.common import HealthResponse
 
 router = APIRouter()
-settings = get_settings()
 
 
 @router.get("/health", response_model=HealthResponse, tags=["health"])
-async def health_check() -> HealthResponse:
+async def health_check(settings: Annotated[Settings, Depends(get_settings)]) -> HealthResponse:
     """Comprobación de salud básica del backend de LessonForge AI."""
     return HealthResponse(
         status="ok",
