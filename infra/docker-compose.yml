@@ -4,7 +4,7 @@
 
 services:
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: lessonforge_db
     restart: unless-stopped
     environment:
@@ -14,7 +14,7 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgvector_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -27,17 +27,16 @@ services:
       dockerfile: ../infra/Dockerfile.backend
     container_name: lessonforge_backend
     restart: unless-stopped
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    # Aplica las migraciones y arranca la API con recarga en caliente
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"]
     environment:
       ENVIRONMENT: development
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-lessonforge_user}:${POSTGRES_PASSWORD:-lessonforge_dummy_password}@db:5432/${POSTGRES_DB:-lessonforge_db}
       DOCS_ENABLED: "true"
-      UPLOAD_DIR: /app/uploads
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
       - ../backend:/app
-      - uploads_data:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -59,5 +58,5 @@ services:
       - backend
 
 volumes:
-  postgres_data:
-  uploads_data:
+  # PostgreSQL 16 + pgvector (imagen Debian; no reutiliza el volumen anterior de la imagen alpine)
+  pgvector_data:

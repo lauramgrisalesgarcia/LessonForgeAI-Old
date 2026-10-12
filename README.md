@@ -42,11 +42,26 @@ npm ci
 npm run dev
 ```
 
-Con Docker (incluye PostgreSQL):
+Con Docker (PostgreSQL 16 + pgvector; el backend aplica las migraciones al arrancar):
 
 ```bash
 docker compose -f infra/docker-compose.yml up --build
+docker exec lessonforge_backend python -m app.scripts.seed   # usuarios ficticios de demo
 ```
+
+Sin Docker para el backend, con la base de datos del compose levantada
+(`docker compose -f infra/docker-compose.yml up -d db`):
+
+```bash
+cd backend
+uv run alembic upgrade head
+uv run python -m app.scripts.seed
+```
+
+El seed crea 2 tutores (`tutora.ana@example.com`, `tutor.bruno@example.com`) y 6 alumnos
+(`alumno1..6@example.com`) con la contraseña `SEED_DEMO_PASSWORD` de `backend/.env.example`.
+Las pruebas del backend usan una base de datos aparte (`lessonforge_db_test`) que se crea y migra
+sola.
 
 Copia `backend/.env.example` a `backend/.env` y `frontend/.env.example` a `frontend/.env` si
 necesitas cambiar valores. Los valores incluidos son ficticios; nunca subas secretos reales.

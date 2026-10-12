@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -12,7 +13,7 @@ class Settings(BaseSettings):
     """Configuración centralizada y tipada de LessonForge AI."""
 
     PROJECT_NAME: str = "LessonForge AI"
-    ENVIRONMENT: str = "development"
+    ENVIRONMENT: Literal["development", "test", "production"] = "development"
     DOCS_ENABLED: bool = True
 
     # Servidor
@@ -23,16 +24,19 @@ class Settings(BaseSettings):
     # Base de datos (Valores por defecto para arranque y testing)
     DATABASE_URL: str = (
         "postgresql+asyncpg://lessonforge_user:lessonforge_dummy_password"
-        "@localhost:5432/lessonforge_db"
+        "@127.0.0.1:5432/lessonforge_db"
     )
 
     # Seguridad y Autenticación (Valores ficticios)
     SECRET_KEY: str = DEV_SECRET_KEY
-    ALGORITHM: str = "HS256"
+    # Fijado: el token se verifica solo con este algoritmo (rechaza alg=none y confusión de claves)
+    ALGORITHM: Literal["HS256"] = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    # Almacenamiento de archivos
-    UPLOAD_DIR: str = "./uploads"
+    # Datos de demostración (script de seed; nunca en producción)
+    SEED_DEMO_PASSWORD: str = "LessonForge-Demo-2026"
+
+    # Documentos (ADR-003: el PDF se guarda temporalmente en PostgreSQL)
     MAX_UPLOAD_SIZE_MB: int = 10
 
     # Proveedor de IA (ficticio)
