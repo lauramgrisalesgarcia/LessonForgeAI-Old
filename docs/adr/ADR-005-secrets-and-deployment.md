@@ -24,9 +24,10 @@ desplegado en Google Cloud.
   La app los lee con `pydantic-settings`, **sin depender de GCP**.
 - Una **cuenta de servicio dedicada** por servicio (api y worker) con
   `roles/secretmanager.secretAccessor` **solo sobre esos secretos**.
-- En local y CI se usan valores ficticios en `.env` y proveedores falsos. La app **se niega a
-  arrancar** en `ENVIRONMENT=production` si detecta valores ficticios (ya implementado en
-  `core/config.py`).
+- En local, la clave real del proveedor de IA va en `backend/.env` (no versionado) y el resto de
+  valores son ficticios. En CI no hay secretos y las pruebas usan proveedores falsos. La app **se
+  niega a arrancar** en `ENVIRONMENT=production` si detecta valores ficticios (ya implementado en
+  `core/config.py`) y, fuera de `ENVIRONMENT=test`, si `AI_PROVIDER=fake` (RNF-09).
 - Rotación: se crea una nueva versión del secreto y se vuelve a desplegar.
 
 ### Despliegue

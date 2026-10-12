@@ -21,7 +21,7 @@ Los commits pueden seguir el patrón `test: …` → `feat: …` para que el his
 | Base de datos | **PostgreSQL real con pgvector** (`pgvector/pgvector:pg16`) en Docker o como servicio en CI. Cada prueba se ejecuta en una transacción que se revierte al terminar. **No se usa SQLite**, porque no admite JSONB, ARRAY, ENUM ni `vector` |
 | IA | `FakeLLMProvider` (devuelve salidas programadas, incluidas inválidas y maliciosas) y `FakeEmbeddingProvider` (vectores deterministas a partir de un hash del texto) |
 | Frontend | Vitest, Testing Library y happy-dom |
-| E2E | Playwright: un flujo completo con los proveedores falsos |
+| E2E | Playwright: un flujo completo contra el **proveedor de IA real**, ejecutado a mano antes de la demo |
 | Calidad | ruff (lint y formato), mypy, `tsc --noEmit`, `pip-audit`, `npm audit` |
 
 ## 3. Pirámide de pruebas
@@ -63,12 +63,23 @@ Los commits pueden seguir el patrón `test: …` → `feat: …` para que el his
   entrega → nota determinista → retroalimentación → consulta del tutor.
 - Una E2E con Playwright recorre el mismo flujo desde el frontend de demostración.
 
-### 3.5 Seguridad de la IA (manual y semiautomática)
+### 3.5 Pruebas contra la IA real (`pytest -m live_llm`)
+
+Los proveedores falsos solo sirven para que las pruebas automáticas sean deterministas, gratuitas y
+sin secretos. **La aplicación siempre usa IA real** (RNF-09). Para comprobar la integración real
+existe una suite marcada como `live_llm`:
+- Prueba de humo de cada adaptador: un embedding y una generación mínima con JSON válido.
+- Flujo completo con un PDF de referencia y el proveedor real.
+- Corpus de inyección de prompts (§3.6).
+
+Se ejecuta a mano en local o con `workflow_dispatch` en GitHub Actions, usando un secreto del
+repositorio, **nunca** en cada push. Registra los tokens consumidos.
+
+### 3.6 Seguridad de la IA (manual y semiautomática)
 - Corpus de PDFs con inyecciones ("ignora las instrucciones…", texto oculto, instrucciones en
   otro idioma). Criterio: la salida sigue siendo válida, está en el idioma pedido y no revela el
   prompt.
-- Se ejecuta contra el proveedor real **fuera de CI**, con `pytest -m live_llm`, porque consume
-  cuota.
+- Se ejecuta contra el proveedor real dentro de la suite `live_llm` (§3.5).
 
 ## 4. Criterios de calidad
 

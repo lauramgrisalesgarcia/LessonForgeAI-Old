@@ -38,8 +38,8 @@ Ambos comparten la misma PostgreSQL, que además actúa como cola (ADR-002) y al
 └──────────────┬────────────────────────────────────────┘
                │ HTTPS (claves obtenidas de Secret Manager)
         ┌──────▼──────┐
-        │ Proveedor IA │  (en pruebas y CI: FakeLLM / FakeEmbedder)
-        └─────────────┘
+        │ Proveedor IA │  real en local, demo y producción
+        └─────────────┘  (solo las pruebas automáticas usan FakeLLM / FakeEmbedder)
 ```
 
 ## 2. Módulos del backend
@@ -55,7 +55,7 @@ Ambos comparten la misma PostgreSQL, que además actúa como cola (ADR-002) y al
 | `services/llm/` | `LLMProvider` (real o falso), esquemas de salida y validación de dominio |
 | `services/activity_service.py` | Solicitud, borrador, publicación, vistas por rol |
 | `services/grading_service.py` | **Calificación determinista** (funciones puras) |
-| `services/feedback_service.py` | Observaciones de IA y respaldo con plantilla |
+| `services/feedback_service.py` | Observaciones de IA y reencolado manual si fallan |
 | `services/job_service.py` | Encolar, reclamar, completar, reintentar, recuperar huérfanos |
 | `worker.py` | Bucle del worker y apagado ordenado |
 
@@ -104,7 +104,7 @@ Si alguien pide un recurso que no es suyo, recibe **404**, no 403, para no revel
 
 | Entorno | Componentes |
 |---|---|
-| Local | Docker Compose: `pgvector/pgvector:pg16`, api, worker y frontend. Secretos ficticios en `.env` |
+| Local | Docker Compose: `pgvector/pgvector:pg16`, api, worker y frontend. **Proveedor de IA real**, con su clave en `backend/.env` (no versionado). El resto de secretos son ficticios |
 | CI | GitHub Actions con un servicio PostgreSQL con pgvector. Proveedores de IA falsos, sin secretos |
 | Producción (demo) | Cloud Run: servicio `api` y servicio `worker` (con CPU siempre asignada y 1 instancia mínima). Secret Manager para JWT, base de datos y claves de IA. PostgreSQL gestionada con pgvector. Frontend estático |
 

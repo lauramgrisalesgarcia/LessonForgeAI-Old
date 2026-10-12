@@ -24,7 +24,8 @@ debe recibir una nota y observaciones. Se planteó que el LLM pusiera la nota.
   la ortografía cuentan**, porque son parte del aprendizaje del idioma.
 - Nota = aciertos / total × 100, con 2 decimales. Se acompaña de un desglose por ítem.
 - La calificación es **síncrona** al entregar. Las observaciones de IA son un trabajo asíncrono
-  que **lee** la nota pero **nunca la modifica**. Si fallan, se usa una plantilla de respaldo.
+  que **lee** la nota pero **nunca la modifica**. Si fallan, `feedback_status = FAILED` y el tutor
+  puede volver a encolar el trabajo. La nota sigue disponible.
 - `grading_service` contiene funciones puras sin E/S y es lo primero que se desarrolla con TDD.
 
 ## Consecuencias

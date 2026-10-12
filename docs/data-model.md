@@ -153,7 +153,7 @@ por accidente.
 | answers | JSONB | `{item_id: respuesta}`. Se valida contra los ítems |
 | score | NUMERIC(5,2) | 0–100. Determinista |
 | breakdown | JSONB | `[{item_id, is_correct, given, expected}]` |
-| feedback_status | ENUM `PENDING`, `READY`, `FALLBACK` | |
+| feedback_status | ENUM `PENDING`, `READY`, `FAILED` | `FAILED`: el tutor puede volver a encolar el trabajo |
 | feedback | JSONB NULL | `{summary, improvements: [{item_id, tip}]}` |
 | submitted_at | timestamptz | Inmutable |
 | | | **UNIQUE (`activity_id`, `student_id`)**: un solo intento |

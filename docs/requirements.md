@@ -59,7 +59,7 @@ para mostrar el flujo.
 | RF-08 | **Revisión y publicación** | El tutor ve el borrador con las respuestas correctas y las fuentes, y puede **publicarlo** o **descartarlo**. El alumno solo ve actividades publicadas |
 | RF-09 | **Resolución** | El alumno lista las actividades publicadas para él y las obtiene **sin respuestas correctas**. Envía sus respuestas **una sola vez** |
 | RF-10 | **Calificación determinista** | Se califica de inmediato al recibir la entrega. En `quiz`, la opción elegida debe ser exactamente la correcta. En `fill_blank`, la respuesta se normaliza (mayúsculas, espacios y puntuación final; **las tildes sí cuentan**) y se compara con la lista de respuestas aceptadas. Nota de 0 a 100 con 2 decimales y desglose por ítem. **El LLM no interviene** |
-| RF-11 | **Observaciones de IA** | Después de calificar, un trabajo genera un resumen y puntos a mejorar para cada ítem fallado, a partir de los ítems, las respuestas y los fragmentos fuente. **No modifica la nota.** Si fallan todos los intentos, se usa una retroalimentación de respaldo hecha con plantilla. Las observaciones privadas del tutor **no** se incluyen en este prompt |
+| RF-11 | **Observaciones de IA** | Después de calificar, un trabajo genera un resumen y puntos a mejorar para cada ítem fallado, a partir de los ítems, las respuestas y los fragmentos fuente. **No modifica la nota.** Si fallan todos los intentos, `feedback_status = FAILED`: el alumno ve su nota y un aviso de "observaciones no disponibles", y el tutor puede volver a encolar el trabajo. No hay retroalimentación sustituta sin IA. Las observaciones privadas del tutor **no** se incluyen en este prompt |
 | RF-12 | **Resultados** | El alumno ve su nota, las respuestas correctas (solo después de entregar) y las observaciones. El tutor ve las entregas de **sus** alumnos |
 | RF-13 | **Frontend de demostración** | Pantallas: inicio de sesión, crear lección y subir PDF, solicitar actividad y consultar su estado, revisar y publicar, resolver (alumno) y ver resultado (ambos roles) |
 
@@ -71,10 +71,11 @@ para mostrar el flujo.
 | RNF-02 | **TDD**: cada caso de uso empieza por una prueba que falla. La CI bloquea los cambios si las pruebas no pasan (ver [testing-strategy.md](testing-strategy.md)) |
 | RNF-03 | **Contrato OpenAPI** generado por FastAPI a partir de Pydantic. `/docs` se desactiva en producción |
 | RNF-04 | **Secretos** en Google Cloud Secret Manager. Ningún secreto real en el repositorio, la imagen ni los logs (ver ADR-005) |
-| RNF-05 | **Consumo acotado**: límite de peticiones en el inicio de sesión y en la generación, y cuota diaria de tokens por tutor |
+| RNF-05 | **Consumo acotado**: límite de peticiones en el inicio de sesión y en la generación, cuota diaria de tokens por tutor y alerta de presupuesto en la facturación de GCP o del proveedor de IA |
 | RNF-06 | **Observabilidad**: logs JSON con `request_id`. Por cada llamada a la IA se registran modelo, versión del prompt, tokens y latencia, **sin** registrar el contenido ni los secretos |
 | RNF-07 | **Reproducibilidad**: Docker Compose en local, lockfiles (`uv.lock`, `package-lock.json`) y CI en GitHub Actions |
 | RNF-08 | **Rendimiento**: los endpoints síncronos responden en menos de 500 ms p95 en local (la subida de archivos no cuenta). Una generación típica tarda menos de 60 s |
+| RNF-09 | **IA real en ejecución**: embeddings, generación de actividades y observaciones usan **siempre** el proveedor de IA real, en desarrollo local, en la demo y en producción. Los proveedores falsos existen **solo para las pruebas automáticas**, y la aplicación se niega a arrancar con `AI_PROVIDER=fake` salvo con `ENVIRONMENT=test` |
 
 ## 6. Fuera del alcance del MVP
 
@@ -103,11 +104,12 @@ Quedan fuera del MVP, de forma justificada para cumplir el plazo:
 | Fecha | Entregable |
 |---|---|
 | 12 oct | PostgreSQL con pgvector, Alembic, usuarios, inicio de sesión, datos de prueba y relación tutor–alumno |
-| 13 oct | Lecciones y matriz de pruebas de autorización |
-| 14–15 oct | Subida de PDF, worker e ingesta (extracción, fragmentos, embeddings con proveedor falso) |
-| 16–17 oct | Generación con RAG (LLM falso), validación, revisión y publicación |
-| **18 oct** | Entrega, calificación y trabajo de retroalimentación. 🎯 **Backend completo con IA falsa** |
-| 19 oct | Proveedores reales de LLM y embeddings, límites y cuotas |
+| 13 oct | Lecciones y matriz de pruebas de autorización. **Fecha límite para elegir el proveedor de IA** |
+| 14 oct | Adaptadores reales `LLMProvider` y `EmbeddingProvider`, con prueba de humo contra la API real. Medición de tokens y alerta de presupuesto |
+| 14–15 oct | Subida de PDF, worker e ingesta con **embeddings reales** |
+| 16–17 oct | Generación con RAG y **LLM real**, validación, revisión y publicación |
+| **18 oct** | Entrega, calificación y retroalimentación con **IA real**. 🎯 **Backend completo con IA real** |
+| 19 oct | Límites y cuotas. Corpus de inyección de prompts contra el proveedor real |
 | 20–21 oct | Frontend de demostración. 🎯 **Demo completa en el navegador** |
 | 22 oct | Cloud Run, Secret Manager y base de datos gestionada |
 | **23 oct** | E2E, revisión OWASP. **Congelación de funcionalidades** |
@@ -116,16 +118,19 @@ Quedan fuera del MVP, de forma justificada para cumplir el plazo:
 
 **Recortes si hay retraso.** Se aplican en este orden:
 1. Se elimina `fill_blank`.
-2. La retroalimentación pasa a ser solo la plantilla.
-3. Solo se despliega el backend.
-4. La E2E se sustituye por una prueba de integración HTTPX del flujo completo.
+2. Solo se despliega el backend.
+3. La E2E se sustituye por una prueba de integración HTTPX del flujo completo.
 
-**No se recortan:** autorización, protección de respuestas, calificación determinista, trabajos
-con reintentos y defensas frente a inyección de prompts.
+**No se recortan:** uso de IA real, autorización, protección de respuestas, calificación
+determinista, trabajos con reintentos y defensas frente a inyección de prompts.
 
 ## 9. Decisiones pendientes
 
-- **Proveedor de LLM y embeddings.** Se propone Gemini (Vertex AI o Gemini API) por coherencia con
-  GCP, siempre detrás de la interfaz `LLMProvider` / `EmbeddingProvider`.
+- **Proveedor de LLM y embeddings.** Hay que decidirlo antes del **13 de octubre**, en evaluación
+  por coste. Criterios: precio por token de entrada y salida y de embeddings; salida JSON
+  estructurada; calidad en los idiomas objetivo; latencia; integración con GCP. El LLM y los
+  embeddings pueden ser de proveedores distintos: algunos no ofrecen embeddings, y entonces hace
+  falta un segundo proveedor (y otro secreto). El código siempre va detrás de las interfaces
+  `LLMProvider` / `EmbeddingProvider`.
 - **Base de datos gestionada:** Cloud SQL para PostgreSQL o Neon. Ambas admiten pgvector.
 - **Idiomas objetivo admitidos** en el MVP (por ejemplo `en`, `es`, `fr`, `de`, `it`, `pt`).

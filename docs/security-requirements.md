@@ -55,5 +55,8 @@ Cada celda corresponde a una prueba parametrizada en `tests/api/test_authorizati
 - **Producción:** Google Cloud Secret Manager, inyectado en Cloud Run como variables de entorno a
   partir de referencias a secretos. La cuenta de servicio tiene `roles/secretmanager.secretAccessor`
   **solo** sobre los secretos de la app. Ver ADR-005.
-- **Local y CI:** valores ficticios en `.env` (que no se versiona) y proveedores de IA falsos.
+- **Local:** la clave real del proveedor de IA va en `backend/.env` (no se versiona). El resto de
+  valores son ficticios. Se recomienda una clave de desarrollo con su propio límite de gasto.
+- **CI:** sin secretos. Las pruebas automáticas usan proveedores falsos. La suite contra la IA real
+  (`live_llm`) se lanza a mano y usa un secreto de GitHub Actions.
 - **Ningún secreto real** en el repositorio, en la imagen, en los logs ni en los mensajes de error.
