@@ -218,3 +218,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Node.js and Frontend artifacts
+node_modules/
+.pnpm-store/
+frontend/dist/
+frontend/build/
+*.local
+.env.*
+!.env.example

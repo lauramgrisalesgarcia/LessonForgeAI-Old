@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: lessonforge_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lessonforge_user
+      POSTGRES_PASSWORD: lessonforge_dummy_password
+      POSTGRES_DB: lessonforge_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../infra/Dockerfile.backend
+    container_name: lessonforge_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://lessonforge_user:lessonforge_dummy_password@db:5432/lessonforge_db
+      SECRET_KEY: dummy-insecure-secret-key-for-development-only-change-in-prod
+      DOCS_ENABLED: "true"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - uploads_data:/app/uploads
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../infra/Dockerfile.frontend
+    container_name: lessonforge_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  uploads_data:
